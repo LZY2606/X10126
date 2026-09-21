@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>状态机回放室</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>状态机回放室</h1>
+      <p>锁定定义、初始状态、事件日志与随机种子；逐步复现确定性轨迹。</p>
+    </div>
+    <div class="fingerprints">
+      <span>定义指纹</span>
+      <code id="definitionFingerprint">未加载</code>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel editor">
+      <h2>1. 状态机定义</h2>
+      <textarea id="definition" spellcheck="false"></textarea>
+      <button id="saveDefinition">保存定义</button>
+      <span id="definitionStatus" class="status"></span>
+    </section>
+
+    <section class="panel editor">
+      <h2>2. 事件日志</h2>
+      <textarea id="events" spellcheck="false"></textarea>
+      <div class="grid">
+        <label>种子 <input id="seed" type="number" value="42"></label>
+        <label>会话 ID <input id="sessionId" value="demo-session"></label>
+      </div>
+      <button id="createSession">创建 / 重置会话</button>
+      <button id="loadSession">刷新会话</button>
+      <span id="sessionStatus" class="status"></span>
+    </section>
+
+    <section class="panel controls">
+      <h2>3. 回放与分支</h2>
+      <div class="toolbar">
+        <select id="branch"></select>
+        <button id="step">单步</button>
+        <button id="checkpoint">检查点</button>
+        <button id="restore">回到选中检查点</button>
+        <button id="fork">从检查点分叉</button>
+        <button id="merge">尝试合并 main 与当前分支</button>
+        <button id="compare">比较 main 与当前分支</button>
+        <button id="exportSession">导出会话</button>
+      </div>
+      <label>导入导出 JSON <input id="importFile" type="file" accept="application/json,.json"></label>
+      <label>检查点 <select id="checkpointSelect"></select></label>
+      <div id="message" class="message"></div>
+    </section>
+
+    <section class="panel state-panel">
+      <h2>当前状态</h2>
+      <pre id="currentState"></pre>
+      <h3>待处理外部事件 / 内部队列</h3>
+      <pre id="queues"></pre>
+    </section>
+
+    <section class="panel trace-panel">
+      <h2>逐步前后差异与轨迹</h2>
+      <div id="diff" class="diff"></div>
+      <pre id="trace"></pre>
+    </section>
+
+    <section class="panel compare-panel">
+      <h2>分支比较 / 合并结果</h2>
+      <pre id="compareResult"></pre>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
