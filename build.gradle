@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'sm.Server'
+}
+
+tasks.register('replayTests', JavaExec) {
+    description = 'Runs the deterministic replay test suite (virtual logical clock, no sleeps).'
+    group = 'verification'
+    mainClass = 'sm.TestRunner'
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn 'replayTests'
+}
