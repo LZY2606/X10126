@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>状态机回放室</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>状态机回放室</h1>
+    <p class="subtitle">确定性状态机回放 · 检查点分叉 · 分支合并 · 稳定指纹</p>
+  </header>
+
+  <main>
+    <section class="panel" id="definition-panel">
+      <h2>1. 状态机定义</h2>
+      <p class="hint">编辑 JSON 定义后保存，系统会生成定义指纹。</p>
+      <textarea id="definition-editor" rows="18" spellcheck="false"></textarea>
+      <div class="row">
+        <button id="save-definition">保存定义</button>
+        <button id="load-sample">载入示例</button>
+        <select id="definition-select"></select>
+        <button id="load-definition">载入所选</button>
+      </div>
+      <pre id="definition-fingerprint" class="fingerprint"></pre>
+    </section>
+
+    <section class="panel" id="event-panel">
+      <h2>2. 事件日志（逻辑时钟）</h2>
+      <p class="hint">同时刻事件按 priority 降序、seq 升序稳定排序。</p>
+      <textarea id="event-editor" rows="12" spellcheck="false"></textarea>
+      <div class="row">
+        <label>随机种子 <input id="seed" type="number" value="42"></label>
+        <label>会话名 <input id="session-name" value="现场会话"></label>
+        <button id="create-session" class="primary">创建会话并导入</button>
+      </div>
+    </section>
+
+    <section class="panel" id="replay-panel">
+      <h2>3. 回放</h2>
+      <div class="row wrap">
+        <select id="session-select"></select>
+        <button id="refresh-session">刷新</button>
+        <button id="step">单步</button>
+        <button id="step5">5 步</button>
+        <button id="run-end">跑到结束</button>
+        <button id="checkpoint">建立检查点</button>
+        <button id="append-events">追加编辑器事件</button>
+      </div>
+      <div id="session-meta" class="meta"></div>
+      <h3>待处理事件</h3>
+      <div id="pending-list" class="list"></div>
+      <h3>每步前后差异与输出</h3>
+      <div id="trace-list" class="trace"></div>
+    </section>
+
+    <section class="panel" id="branch-panel">
+      <h2>4. 检查点与分叉</h2>
+      <div class="row wrap">
+        <select id="checkpoint-select"></select>
+        <input id="branch-name" value="分叉会话">
+        <button id="fork">从检查点分叉</button>
+        <button id="fork-new-def">用另一定义分叉（应被拒绝）</button>
+      </div>
+      <h3>比较两个分支</h3>
+      <div class="row wrap">
+        <select id="compare-a"></select>
+        <select id="compare-b"></select>
+        <button id="compare">比较状态与输出</button>
+      </div>
+      <pre id="compare-result" class="result"></pre>
+      <h3>尝试合并</h3>
+      <div class="row">
+        <button id="merge">合并所选两个分支</button>
+      </div>
+      <pre id="merge-result" class="result"></pre>
+    </section>
+
+    <section class="panel" id="io-panel">
+      <h2>5. 导出 / 导入</h2>
+      <div class="row">
+        <button id="export-session">导出当前会话</button>
+        <button id="import-session">导入下方 JSON</button>
+      </div>
+      <textarea id="io-editor" rows="14" spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
