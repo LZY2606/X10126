@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+// 测试不依赖外部组件：使用自研测试运行器（虚拟逻辑时钟，无 sleep）。
+tasks.register('replayTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic replay test suite'
+    dependsOn tasks.named('compileTestJava')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.TestRunner'
+}
+
+tasks.named('test') {
+    dependsOn 'replayTest'
+    enabled = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
