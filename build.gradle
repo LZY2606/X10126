@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'gsb.Main'
+}
+
+run {
+    standardInput = System.in
+}
+
+// 测试不依赖外部库：runTests 直接运行自研测试入口，test 任务挂在其后。
+tasks.register('runTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the self-contained test harness (gsb.test.TestMain).'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'gsb.test.TestMain'
+    dependsOn tasks.named('testClasses')
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('runTests')
+}
