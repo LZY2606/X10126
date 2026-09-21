@@ -1,0 +1,37 @@
+plugins {
+    id 'application'
+}
+
+group = 'replay'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    // Intentionally empty: the project has zero external dependencies.
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+// Custom deterministic test runner (no external test framework needed).
+tasks.register('replayTest', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.ReplayTests'
+}
+tasks.named('check') {
+    dependsOn 'replayTest'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+run {
+    standardInput = System.in
+}
