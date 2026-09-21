@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'com.replayroom.Main'
+}
+
+// 确定性测试：自研测试驱动（无外部依赖、不使用 sleep），挂到 test 生命周期上。
+tasks.register('engineTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic engine test suite.'
+    dependsOn tasks.named('compileTestJava')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.replayroom.tests.TestMain'
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('engineTests')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
