@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'replay'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 零运行时依赖：HTTP 服务使用 JDK 内置 com.sun.net.httpserver
+}
+
+application {
+    mainClass = 'replay.Main'
+    applicationDefaultJvmArgs = ['-Dfile.encoding=UTF-8']
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// 本项目使用零依赖的自定义测试运行器（replay.test.TestRunner），
+// 保证完全离线可构建。禁用默认 test 任务，用 JavaExec 替换。
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.register('runTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the zero-dependency deterministic test suite'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.test.TestRunner'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('runTests')
+}
