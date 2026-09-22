@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>状态机回放室</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1e2740; --line: #2a3550;
+    --text: #e6ebf5; --muted: #8b97b3; --accent: #5b9dff; --ok: #3ecf8e;
+    --warn: #ffb454; --bad: #ff6b6b; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header .fp { font-family:var(--mono); font-size:11px; color:var(--muted); }
+  .layout { display:grid; grid-template-columns: 340px 1fr 380px; gap:12px; padding:12px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .panel h2 { font-size:13px; margin:0 0 10px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.08em; }
+  textarea { width:100%; background:#0c1120; color:var(--text); border:1px solid var(--line);
+    border-radius:8px; padding:8px; font-family:var(--mono); font-size:12px; resize:vertical; }
+  input, select { background:#0c1120; color:var(--text); border:1px solid var(--line);
+    border-radius:6px; padding:5px 8px; font-size:12px; }
+  button { background:var(--accent); color:#08111f; border:0; border-radius:6px;
+    padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  button.danger { background:var(--bad); color:#220606; }
+  button:disabled { opacity:.4; cursor:default; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .chip { display:inline-block; padding:1px 7px; border-radius:99px; font-size:11px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { color:var(--ok); border-color:#1f5c43; }
+  .chip.failed { color:var(--bad); border-color:#5e2222; }
+  .chip.nomatch { color:var(--warn); border-color:#5e4622; }
+  .chip.internal { color:#b58cff; border-color:#41305e; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { text-align:left; padding:5px 7px; border-bottom:1px solid var(--line);
+    vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  .mono { font-family:var(--mono); font-size:11px; }
+  .trace-wrap { max-height: 320px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  .state-box { background:#0c1120; border:1px solid var(--line); border-radius:8px;
+    padding:8px; font-family:var(--mono); font-size:12px; white-space:pre-wrap; }
+  .diff-add { color:var(--ok); } .diff-del { color:var(--bad); } .diff-chg { color:var(--warn); }
+  .branch-card { border:1px solid var(--line); border-radius:8px; padding:8px; margin-bottom:8px;
+    background:var(--panel2); }
+  .branch-card.active { border-color:var(--accent); }
+  .muted { color:var(--muted); }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    background:#0c1120; border:1px solid var(--line); padding:10px 16px; border-radius:8px;
+    max-width:70%; font-size:13px; display:none; white-space:pre-wrap; z-index:10; }
+  .toast.err { border-color:var(--bad); }
+  details { margin-top:8px; }
+  summary { cursor:pointer; color:var(--muted); }
+  .kv { display:grid; grid-template-columns: 90px 1fr; gap:2px 8px; font-size:12px; }
+  .hash { word-break:break-all; }
+  @media (max-width: 1100px){ .layout{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>状态机回放室</h1>
+  <span class="chip">定义 <span id="defVer"></span></span>
+  <span class="fp" id="defFp"></span>
+  <span style="flex:1"></span>
+  <button class="ghost" id="btnExport">导出会话</button>
+  <label class="ghost" style="border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer">
+    导入会话<input id="fileImport" type="file" accept="application/json" style="display:none">
+  </label>
+</header>
+
+<div class="layout">
+  <!-- 左列：定义与事件 -->
+  <div>
+    <div class="panel">
+      <h2>状态机定义</h2>
+      <textarea id="defEditor" rows="16"></textarea>
+      <div class="row">
+        <button id="btnSaveDef">保存为新版本</button>
+        <button class="ghost" id="btnFormatDef">格式化</button>
+      </div>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">
+        保存会锁定定义版本、初始状态与随机种子；已有回放历史时需新建会话。
+      </p>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>事件日志（逻辑时间）</h2>
+      <textarea id="eventEditor" rows="10" placeholder='[{"id":"e1","type":"order","time":10,"priority":1,"seq":1,"source":"gw","payload":{}}]'></textarea>
+      <div class="row">
+        <button id="btnImport">导入到分支</button>
+        <select id="importBranch"></select>
+      </div>
+      <details>
+        <summary>已导入事件</summary>
+        <div class="trace-wrap" style="margin-top:8px;max-height:180px">
+          <table id="importTable"></table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- 中列：回放 -->
+  <div>
+    <div class="panel">
+      <h2>回放控制 — <span id="activeBranchName">main</span></h2>
+      <div class="kv">
+        <span class="muted">当前状态</span><span id="curState" class="mono"></span>
+        <span class="muted">步数</span><span id="stepCount" class="mono"></span>
+        <span class="muted">轨迹哈希</span><span id="traceHash" class="mono hash"></span>
+        <span class="muted">待处理</span><span class="mono"><span id="pendingExt"></span> 外部 / <span id="pendingInt"></span> 内部</span>
+      </div>
+      <div class="row">
+        <button id="btnStep">单步</button>
+        <button id="btnRun">播放到结束</button>
+        <button class="ghost" id="btnCp">建立检查点</button>
+        <input id="cpLabel" placeholder="检查点标签" style="flex:1;min-width:120px">
+      </div>
+      <div id="nextEvent" class="muted mono" style="margin-top:8px;font-size:12px"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>逐步前后差异</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div class="muted" style="font-size:11px">当前状态数据</div>
+          <div id="stateView" class="state-box"></div>
+        </div>
+        <div>
+          <div class="muted" style="font-size:11px">最近一步差异 / 输出</div>
+          <div id="diffView" class="state-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>轨迹</h2>
+      <div class="trace-wrap">
+        <table id="traceTable">
+          <thead><tr><th>#</th><th>事件</th><th>t</th><th>状态</th><th>转移</th><th>输出/失败</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右列：分支与检查点 -->
+  <div>
+    <div class="panel">
+      <h2>分支</h2>
+      <div id="branchList"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>检查点（含定义指纹校验）</h2>
+      <div id="cpList"></div>
+      <div class="row">
+        <select id="forkCp"></select>
+        <input id="forkName" placeholder="新分支名">
+        <label class="muted" style="font-size:11px;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="forkPending" checked>携带待处理事件
+        </label>
+        <button id="btnFork">分叉</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>比较与合并</h2>
+      <div class="row" style="margin-top:0">
+        <select id="cmpA"></select>
+        <select id="cmpB"></select>
+      </div>
+      <div class="row">
+        <button class="ghost" id="btnCompare">比较状态</button>
+        <button class="ghost" id="btnMergePlan">合并预检</button>
+        <button id="btnMerge">执行合并</button>
+      </div>
+      <div id="mergeResult" class="state-box" style="margin-top:8px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

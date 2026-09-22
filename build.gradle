@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'gsb.replay.Main'
+}
+
+// 测试套件是纯 JDK 断言程序（虚拟逻辑时钟、无 sleep、无外部组件）。
+// 内置 Test 任务需要 JUnit，这里禁用它；运行 `./gradlew test` 时仍会
+// 通过任务依赖执行真正的断言套件 suite。
+tasks.register('suite', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic replay test suite.'
+    dependsOn('testClasses', 'classes')
+    mainClass = 'gsb.replay.AllTests'
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn('suite')
+}
+
+tasks.named('check') {
+    dependsOn('suite')
+}
