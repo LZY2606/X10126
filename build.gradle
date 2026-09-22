@@ -1,0 +1,24 @@
+plugins {
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn 'classes'
+    doLast {
+        javaexec {
+            classpath = sourceSets.main.runtimeClasspath
+            mainClass = 'replay.ReplayTests'
+        }
+    }
+}
