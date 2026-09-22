@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'rr'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'rr.Main'
+}
+
+// 零外部依赖：自测运行器（虚拟逻辑时钟，不使用 sleep）
+tasks.register('runTests', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'rr.Tests'
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn 'runTests'
+}
