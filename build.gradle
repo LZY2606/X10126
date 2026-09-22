@@ -1,0 +1,49 @@
+plugins {
+    id 'application'
+}
+
+import org.gradle.api.Action
+import org.gradle.api.Task
+import org.gradle.api.file.ConfigurableFileCollection
+
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+
+group = 'replay'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.web.Main'
+}
+
+abstract class ReplayTestAction implements Action<Task> {
+    @InputFiles
+    abstract ConfigurableFileCollection getClasspath()
+
+    @Inject
+    abstract ExecOperations getExecOperations()
+
+    @Override
+    void execute(Task task) {
+        execOperations.javaexec {
+            classpath = this.classpath
+            mainClass = 'replay.AllTests'
+        }
+    }
+}
+
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
+    group = 'verification'
+    description = 'Runs deterministic replay room tests without JUnit or wall-clock sleeps.'
+    dependsOn sourceSets.test.classesTaskName
+    def action = objects.newInstance(ReplayTestAction)
+    action.classpath = sourceSets.test.runtimeClasspath
+    doLast(action)
+}

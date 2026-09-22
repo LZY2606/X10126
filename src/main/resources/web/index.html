@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>状态机回放室</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>状态机回放室</h1>
+      <p>定义版本、初始状态、事件内容与随机种子共同锁定稳定回放指纹。</p>
+    </div>
+    <div class="project-line">
+      <label>项目 ID <input id="projectId" value="demo-project"></label>
+      <button id="newProject">新建/重置项目</button>
+      <button id="loadProject">载入磁盘项目</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card editor-card">
+      <div class="section-head">
+        <h2>1. 定义与事件</h2>
+        <button id="loadSample">载入示例</button>
+      </div>
+      <label class="editor-label">状态机定义（JSON）</label>
+      <textarea id="definition" spellcheck="false"></textarea>
+      <label class="editor-label">外部事件日志（逻辑时钟，无 sleep）</label>
+      <textarea id="events" spellcheck="false"></textarea>
+      <div class="toolbar">
+        <button id="validateDefinition">检查 JSON</button>
+        <button id="appendEvents">追加到当前分支</button>
+      </div>
+    </section>
+
+    <section class="card replay-card">
+      <div class="section-head">
+        <h2>2. 回放与差异</h2>
+        <div class="branch-picker">
+          <label>分支 <select id="branchSelect"></select></label>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="stepOne">单步</button>
+        <button id="runAll">播放到队尾</button>
+        <input id="checkpointName" placeholder="检查点名，如 cp-1">
+        <button id="checkpoint">建立检查点</button>
+      </div>
+      <pre id="stateView" class="state-view"></pre>
+      <div class="section-head compact">
+        <h3>逐步轨迹</h3>
+      </div>
+      <div id="steps" class="steps"></div>
+    </section>
+
+    <section class="card branch-card">
+      <h2>3. 检查点、分叉与合并</h2>
+      <div id="checkpoints" class="checkpoint-list"></div>
+      <div class="grid-form">
+        <input id="forkCheckpoint" placeholder="源检查点 ID">
+        <input id="forkBranchId" placeholder="新分支 ID">
+        <button id="fork">从检查点分叉</button>
+        <input id="mergeSourceBranch" placeholder="源分支 ID">
+        <input id="mergeBranchId" placeholder="合并结果分支 ID">
+        <button id="merge">尝试合并</button>
+        <select id="compareBranch"></select>
+        <button id="compare">比较与当前分支</button>
+      </div>
+      <pre id="branchResult" class="state-view small"></pre>
+      <div class="toolbar">
+        <button id="exportSession">导出会话</button>
+        <button id="importSession">导入下方会话并验证哈希</button>
+      </div>
+      <textarea id="sessionBox" spellcheck="false" placeholder="导出的会话 JSON 会显示在这里，也可粘贴后导入。"></textarea>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
