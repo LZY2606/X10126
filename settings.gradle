@@ -1,0 +1,2 @@
+rootProject.name = 'state-machine-replay-room'
+include 'app'

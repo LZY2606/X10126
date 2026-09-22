@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>状态机回放室</title>
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#667085; --line:#d9dee8; --panel:#fff; --bg:#f4f6fa; --blue:#2458d3; --red:#b42318; --green:#027a48; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:20px 28px; background:#111827; color:#fff; }
+    header h1 { margin:0 0 6px; font-size:24px; }
+    header p { margin:0; color:#cbd5e1; }
+    main { padding:20px 28px 40px; display:grid; grid-template-columns: 360px 1fr; gap:18px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; box-shadow:0 1px 2px rgba(16,24,40,.05); }
+    h2 { font-size:16px; margin:0 0 12px; }
+    h3 { font-size:14px; margin:16px 0 8px; }
+    label { display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; }
+    textarea, input, select { width:100%; border:1px solid var(--line); border-radius:7px; padding:8px; font:inherit; background:#fff; color:var(--ink); }
+    textarea { min-height:180px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+    .events { min-height:110px; }
+    button { border:1px solid #20366f; background:var(--blue); color:#fff; border-radius:7px; padding:7px 10px; cursor:pointer; font-size:13px; margin:4px 4px 0 0; }
+    button.secondary { background:#fff; color:var(--ink); border-color:var(--line); }
+    button.danger { background:var(--red); border-color:var(--red); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .muted { color:var(--muted); font-size:12px; }
+    .branch { border:1px solid var(--line); border-radius:8px; padding:10px; margin:8px 0; cursor:pointer; }
+    .branch.active { border-color:var(--blue); box-shadow:0 0 0 2px rgba(36,88,211,.12); }
+    .branch b { display:block; }
+    .hash { font-family:ui-monospace,monospace; font-size:11px; word-break:break-all; color:#344054; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th,td { border-bottom:1px solid var(--line); text-align:left; padding:7px; vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#0f172a; color:#dbeafe; border-radius:8px; padding:10px; max-height:280px; overflow:auto; font-size:12px; }
+    .pill { display:inline-block; border-radius:999px; padding:2px 8px; font-size:11px; background:#eef2ff; color:#3538cd; }
+    .pill.fail { background:#fef3f2; color:var(--red); }
+    .pill.ok { background:#ecfdf3; color:var(--green); }
+    #message { min-height:20px; margin-top:10px; font-size:13px; }
+    #message.error { color:var(--red); }
+    #message.ok { color:var(--green); }
+    .wide { grid-column:1 / -1; }
+    @media (max-width: 980px) { main { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>状态机回放室</h1>
+  <p>锁定定义、初始状态、事件日志与随机种子；逐步回放、检查点、分叉和合并。</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>状态机定义</h2>
+    <div class="muted">定义指纹：<span id="definitionFingerprint" class="hash">加载中…</span></div>
+    <textarea id="definition"></textarea>
+    <div class="row">
+      <button onclick="saveDefinition()">保存并重置</button>
+      <button class="secondary" onclick="loadDemo()">载入演示</button>
+      <button class="secondary" onclick="resetRoom()">新建空会话</button>
+    </div>
+    <h3>导入事件（同一逻辑时刻按来源优先级、序号稳定排序）</h3>
+    <textarea id="events" class="events"></textarea>
+    <div class="row">
+      <button onclick="importEvents(false)">追加事件</button>
+      <button class="secondary" onclick="importEvents(true)">替换事件</button>
+      <button class="secondary" onclick="loadDemoEvents()">演示事件</button>
+    </div>
+    <div id="message"></div>
+  </section>
+
+  <section class="panel">
+    <h2>回放控制</h2>
+    <div class="row">
+      <label style="margin:0">分支</label>
+      <select id="branchSelect" onchange="selectBranch()"></select>
+      <button onclick="step(1)">单步</button>
+      <button class="secondary" onclick="step(10)">播放 10 步</button>
+      <button onclick="checkpoint()">建立检查点</button>
+    </div>
+    <div id="branchStatus"></div>
+    <h3>检查点 / 分叉</h3>
+    <div id="checkpoints"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>逐步前后差异与轨迹</h2>
+    <div id="trace"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>分支比较与合并</h2>
+    <div class="row">
+      <select id="compareLeft"></select>
+      <select id="compareRight"></select>
+      <button onclick="compare()">比较状态与输出</button>
+      <button class="secondary" onclick="merge()">尝试合并</button>
+      <button class="secondary" onclick="exportSession()">导出会话</button>
+      <label class="secondary" style="display:inline-flex;align-items:center;margin:0">导入文件 <input id="importFile" type="file" accept="application/json" style="width:auto" onchange="importSessionFile(this)"></label>
+    </div>
+    <pre id="comparison">选择两个分支后比较。</pre>
+  </section>
+</main>
+<script>
+let state = null;
+let branch = null;
+let selectedBranch = 'main';
+const demoEvents = [
+  {id:'o1', time:10, source:'operator', sequence:2, type:'order', payload:{id:'A-1', kind:'normal'}},
+  {id:'s1', time:10, source:'sensor', sequence:1, type:'wake', payload:{}},
+  {id:'o2', time:12, source:'operator', sequence:1, type:'order', payload:{id:'B-2', kind:'bad'}},
+  {id:'r1', time:20, source:'timer', sequence:1, type:'reset', payload:{}}
+];
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {headers:{'Content-Type':'application/json'}, ...options});
+  const data = await response.json();
+  if (!response.ok) throw Object.assign(new Error(data.error || 'request failed'), {data});
+  return data;
+}
+
+function show(message, ok = true) {
+  const el = document.getElementById('message');
+  el.textContent = message;
+  el.className = ok ? 'ok' : 'error';
+}
+
+async function refresh() {
+  state = await api('/api/state');
+  document.getElementById('definitionFingerprint').textContent = state.definitionFingerprint;
+  if (!document.getElementById('definition').dataset.touched) {
+    document.getElementById('definition').value = JSON.stringify(state.definition, null, 2);
+  }
+  renderBranchSelectors();
+  await selectBranch();
+}
+
+function renderBranchSelectors() {
+  const options = state.branches.map(b => `<option value="${b.id}" ${b.id === selectedBranch ? 'selected' : ''}>${escapeHtml(b.name)} (${b.id})</option>`).join('');
+  for (const id of ['branchSelect','compareLeft','compareRight']) document.getElementById(id).innerHTML = options;
+  const ids = state.branches.map(b => b.id);
+  if (ids[1]) document.getElementById('compareRight').value = ids[1];
+}
+
+async function selectBranch() {
+  selectedBranch = document.getElementById('branchSelect').value;
+  branch = await api('/api/branches/' + encodeURIComponent(selectedBranch));
+  renderStatus();
+  renderCheckpoints();
+  renderTrace();
+}
+
+function renderStatus() {
+  const pending = branch.events.length;
+  document.getElementById('branchStatus').innerHTML = `
+    <p><span class="pill">${escapeHtml(branch.state)}</span> 步数 ${branch.cursor} / 外部事件 ${pending}，内部待处理 ${branch.pendingInternal}</p>
+    <p class="hash">状态 ${branch.stateHash}<br>轨迹 ${branch.traceHash}</p>
+    <pre>${escapeHtml(JSON.stringify(branch.vars, null, 2))}</pre>`;
+}
+
+function renderCheckpoints() {
+  const mine = state.checkpoints.filter(c => c.branchId === selectedBranch || c.id === 'checkpoint-root');
+  document.getElementById('checkpoints').innerHTML = mine.map(c => `
+    <div class="branch">
+      <b>${escapeHtml(c.id)} <span class="muted">step ${c.step}</span></b>
+      <div class="hash">${c.traceHash}</div>
+      <button class="secondary" onclick="fork('${c.id}')">从此分叉</button>
+    </div>`).join('');
+}
+
+function renderTrace() {
+  if (!branch.trace.length) {
+    document.getElementById('trace').innerHTML = '<p class="muted">尚无轨迹。导入事件后点击单步。</p>';
+    return;
+  }
+  document.getElementById('trace').innerHTML = `<table><thead><tr><th>#</th><th>事件</th><th>迁移</th><th>状态</th><th>差异</th><th>输出</th></tr></thead><tbody>
+  ${branch.trace.map(step => `<tr>
+    <td>${step.step}</td>
+    <td><b>${escapeHtml(step.event.type)}</b><br><span class="muted">${escapeHtml(step.event.id)} @ ${step.event.time}</span>${step.event.internal ? '<br><span class="pill">内部</span>' : ''}</td>
+    <td>${step.matched ? escapeHtml(step.transition || '') : '<span class="muted">未匹配</span>'}${step.failed ? '<br><span class="pill fail">失败</span>' : ''}<div class="muted">${step.error ? escapeHtml(step.error) : ''}</div></td>
+    <td>${escapeHtml(step.fromState)} → ${escapeHtml(step.toState)}</td>
+    <td>${step.changes.map(c => `${escapeHtml(c.path)}: ${short(c.before)} → ${short(c.after)}`).join('<br>') || '<span class="muted">无</span>'}</td>
+    <td>${step.outputs.map(o => escapeHtml(o.name + (o.payload !== undefined ? ':' + JSON.stringify(o.payload) : ''))).join('<br>') || '<span class="muted">无</span>'}</td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+async function saveDefinition() {
+  try {
+    const definition = JSON.parse(document.getElementById('definition').value);
+    await api('/api/definition', {method:'PUT', body:JSON.stringify({definition})});
+    document.getElementById('definition').dataset.touched = '';
+    show('定义已保存，会话已按新定义重置。');
+    await refresh();
+  } catch (e) { show(e.message, false); }
+}
+
+async function importEvents(replace) {
+  try {
+    const events = JSON.parse(document.getElementById('events').value);
+    await api(`/api/branches/${encodeURIComponent(selectedBranch)}/events`, {method:'POST', body:JSON.stringify({events, replace})});
+    show('事件已导入。');
+    await refresh();
+  } catch (e) { show(e.message, false); }
+}
+
+async function step(count) {
+  await api(`/api/branches/${encodeURIComponent(selectedBranch)}/step`, {method:'POST', body:JSON.stringify({count})});
+  await refresh();
+}
+
+async function checkpoint() {
+  await api(`/api/branches/${encodeURIComponent(selectedBranch)}/checkpoints`, {method:'POST', body:JSON.stringify({})});
+  await refresh();
+}
+
+async function fork(checkpointId) {
+  const name = prompt('新分支名称', 'fork-' + checkpointId);
+  if (name === null) return;
+  await api('/api/checkpoints/' + encodeURIComponent(checkpointId) + '/fork', {method:'POST', body:JSON.stringify({name})});
+  await refresh();
+}
+
+async function compare() {
+  const left = document.getElementById('compareLeft').value;
+  const right = document.getElementById('compareRight').value;
+  const data = await api(`/api/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`);
+  document.getElementById('comparison').textContent = JSON.stringify(data, null, 2);
+}
+
+async function merge() {
+  try {
+    const left = document.getElementById('compareLeft').value;
+    const right = document.getElementById('compareRight').value;
+    const name = prompt('合并分支名称', 'merge-' + left + '-' + right);
+    if (name === null) return;
+    await api('/api/merge', {method:'POST', body:JSON.stringify({left,right,name})});
+    show('合并分支已建立。');
+    await refresh();
+  } catch (e) {
+    document.getElementById('comparison').textContent = JSON.stringify(e.data || {error:e.message}, null, 2);
+    show(e.message, false);
+  }
+}
+
+async function exportSession() {
+  const data = await api('/api/export');
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'replay-session.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importSessionFile(input) {
+  try {
+    const text = await input.files[0].text();
+    const data = JSON.parse(text);
+    await api('/api/import', {method:'POST', body:JSON.stringify(data)});
+    document.getElementById('definition').dataset.touched = '';
+    show('会话已导入，轨迹哈希已校验。');
+    await refresh();
+  } catch (e) { show(e.message, false); }
+}
+
+function loadDemo() {
+  document.getElementById('definition').dataset.touched = 'yes';
+  document.getElementById('definition').value = JSON.stringify(defaultDefinition(), null, 2);
+}
+function loadDemoEvents() { document.getElementById('events').value = JSON.stringify(demoEvents, null, 2); }
+async function resetRoom() {
+  await api('/api/reset', {method:'POST'});
+  document.getElementById('definition').dataset.touched = '';
+  await refresh();
+}
+function defaultDefinition() {
+  return {
+    version:'demo-v1', initialState:'idle', seed:20260923,
+    initialVariables:{accepted:0,retries:0,last:''},
+    sourcePriority:{operator:10,sensor:5,timer:1,internal:100},
+    transitions:[
+      {name:'accept-order',from:'idle',event:'order',condition:"data.kind == 'normal'",to:'accepted',actions:[
+        {type:'set',target:'vars.accepted',value:'vars.accepted + 1'},{type:'set',target:'vars.last',value:'data.id'},
+        {type:'output',name:'orderAccepted',payload:'event.id'},{type:'emit',event:'reserve',timeDelta:0,source:'internal',sequence:1,payload:"'stock'"}]},
+      {name:'reserve-stock',from:'accepted',event:'reserve',condition:"data == 'stock'",to:'reserved',actions:[{type:'output',name:'stockReserved'},{type:'randomInt',target:'vars.bin',min:'1',max:'4'}]},
+      {name:'bad-order-retry',from:'idle',event:'order',condition:"data.kind == 'bad'",to:'failed',actions:[{type:'set',target:'vars.retries',value:'vars.retries + 1'},{type:'output',name:'beforeFailure'},{type:'fail',error:"'inventory rejected bad order'",payload:'event.id'}]},
+      {name:'reset',from:'*',event:'reset',condition:'',to:'idle',actions:[{type:'output',name:'reset'}]}
+    ]
+  };
+}
+function short(value) { return escapeHtml(value === undefined ? '∅' : JSON.stringify(value)); }
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+loadDemoEvents();
+refresh().catch(e => show(e.message, false));
+</script>
+</body>
+</html>

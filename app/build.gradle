@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('unitTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the dependency-free deterministic replay tests.'
+    dependsOn(tasks.named('testClasses'))
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.AllTests'
+}
+
+tasks.named('test') {
+    dependsOn(tasks.named('unitTests'))
+    enabled = false
+}
