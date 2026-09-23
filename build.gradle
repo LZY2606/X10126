@@ -1,0 +1,31 @@
+plugins {
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.register('verify', Exec) {
+    dependsOn 'testClasses'
+    commandLine = [
+        "${javaToolchains.launcherFor(java.toolchain).get().executablePath}",
+        '-classpath',
+        sourceSets.test.runtimeClasspath.asPath,
+        'replayroom.TestRunner'
+    ]
+}
+
+tasks.named('check') {
+    dependsOn 'verify'
+}
