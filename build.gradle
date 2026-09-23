@@ -1,0 +1,22 @@
+plugins {
+    id 'application'
+}
+
+group = 'replayroom'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('testClasses')
+    classpath = files(sourceSets.test.output, sourceSets.main.output)
+    mainClass = 'replayroom.ReplayTests'
+}
