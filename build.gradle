@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'io.replayroom'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'io.replayroom.Main'
+}
+
+// 纯 JDK 自测：不依赖任何外部测试框架，test 任务直接运行测试入口
+tasks.named('test') {
+    outputs.upToDateWhen { false }
+    doLast {
+        javaexec {
+            classpath = sourceSets.test.runtimeClasspath
+            mainClass = 'io.replayroom.AllTests'
+            standardOutput = System.out
+            errorOutput = System.err
+        }
+    }
+}
