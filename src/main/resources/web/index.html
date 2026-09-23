@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>状态机回放室</title>
+<style>
+  :root { --bg:#0f1220; --panel:#171b2e; --line:#2a3050; --fg:#e6e9f5;
+          --muted:#8b91b3; --accent:#5b8cff; --ok:#3ecf8e; --bad:#ff5d73; --warn:#ffb454; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.5 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+           display:flex; align-items:baseline; gap:14px; }
+  header h1 { font-size:18px; margin:0; }
+  header span { color:var(--muted); font-size:12px; }
+  main { display:grid; grid-template-columns:380px 1fr 360px; gap:12px; padding:12px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+            padding:12px; min-width:0; }
+  section h2 { font-size:13px; margin:0 0 8px; color:var(--muted);
+               text-transform:uppercase; letter-spacing:.08em; }
+  textarea { width:100%; background:#0c0f1c; color:var(--fg); border:1px solid var(--line);
+             border-radius:6px; padding:8px; font:12px/1.45 ui-monospace,Menlo,Consolas,monospace; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px;
+           padding:6px 12px; cursor:pointer; font-size:13px; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  button:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  input,select { background:#0c0f1c; color:var(--fg); border:1px solid var(--line);
+                 border-radius:6px; padding:6px 8px; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td,th { border-bottom:1px solid var(--line); padding:4px 6px; text-align:left;
+          vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .mono { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; word-break:break-all; }
+  .hash { color:var(--warn); }
+  .pill { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px;
+          background:#222a4d; }
+  .pill.fail { background:#4d2030; color:var(--bad); }
+  .pill.ok { background:#1d3d31; color:var(--ok); }
+  .scroll { max-height:340px; overflow:auto; }
+  .step { border:1px solid var(--line); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .step .head { display:flex; justify-content:space-between; gap:8px; }
+  .diff-add { color:var(--ok); } .diff-del { color:var(--bad); } .diff-mut { color:var(--warn); }
+  #toast { position:fixed; bottom:16px; right:16px; max-width:420px; }
+  #toast div { background:#24133a; border:1px solid var(--bad); border-radius:8px;
+               padding:10px 12px; margin-top:8px; color:#ffd7df; white-space:pre-wrap; }
+  .muted { color:var(--muted); }
+  .tag { font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>状态机回放室</h1>
+  <span>确定性状态机 · 逻辑时间回放 · 检查点分叉 · 合并冲突检测</span>
+</header>
+<main>
+  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+    <section>
+      <h2>1 · 定义状态机并创建会话</h2>
+      <textarea id="def" rows="16"></textarea>
+      <div class="row">
+        <label>种子 <input id="seed" value="42" style="width:80px"></label>
+        <input id="sname" placeholder="会话名称（可选）" style="flex:1">
+      </div>
+      <div class="row"><button onclick="createSession()">创建会话</button>
+        <button class="ghost" onclick="loadSample()">载入示例</button></div>
+    </section>
+    <section>
+      <h2>2 · 导入事件日志（逻辑时间）</h2>
+      <textarea id="events" rows="9"></textarea>
+      <div class="row"><button onclick="addEvents()">导入事件</button>
+        <button class="ghost" onclick="sampleEvents()">示例事件</button></div>
+      <p class="tag">同一 time 的事件按 source 优先级再按 seq 稳定排序；动作派生的内部事件排在当前事件之后。</p>
+    </section>
+    <section>
+      <h2>导出 / 导入</h2>
+      <div class="row"><button class="ghost" onclick="exportSession()">导出会话 JSON</button>
+        <button class="ghost" onclick="toggleImport()">导入</button></div>
+      <div id="importbox" style="display:none">
+        <textarea id="importtext" rows="6" placeholder="粘贴导出的会话 JSON"></textarea>
+        <div class="row"><button onclick="importSession()">导入并校验轨迹哈希</button></div>
+      </div>
+    </section>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+    <section>
+      <h2>3 · 回放控制 · <span id="curName" class="tag"></span></h2>
+      <div class="row">
+        <button id="btnStep" onclick="doStep()">单步</button>
+        <button class="ghost" onclick="doRun(1)">播放 1 步</button>
+        <button class="ghost" onclick="doRun(9999)">播放全部</button>
+        <button class="ghost" onclick="refresh()">刷新</button>
+        <input id="cpName" placeholder="检查点名称">
+        <button class="ghost" onclick="addCheckpoint()">建立检查点</button>
+      </div>
+      <table style="margin-top:10px">
+        <tr><th>步骤</th><td id="stSteps" class="mono"></td></tr>
+        <tr><th>待处理</th><td id="stPending" class="mono"></td></tr>
+        <tr><th>状态</th><td id="stState" class="mono"></td></tr>
+        <tr><th>变量</th><td id="stVars" class="mono"></td></tr>
+        <tr><th>下一事件</th><td id="stNext" class="mono"></td></tr>
+        <tr><th>定义指纹</th><td id="stDefFp" class="mono hash"></td></tr>
+        <tr><th>会话指纹</th><td id="stFp" class="mono hash"></td></tr>
+        <tr><th>轨迹哈希</th><td id="stTrace" class="mono hash"></td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>4 · 逐步前后差异与输出</h2>
+      <div id="trace" class="scroll"></div>
+    </section>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+    <section>
+      <h2>5 · 检查点与分叉</h2>
+      <table id="cps"><tr><th>#</th><th>名称</th><th>步骤</th><th></th></tr></table>
+    </section>
+    <section>
+      <h2>6 · 分支比较与合并</h2>
+      <table id="sessions"></table>
+      <div class="row">
+        A <select id="selA"></select>
+        B <select id="selB"></select>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="compare()">比较状态/输出</button>
+        <button onclick="doMerge()">尝试合并 A←B</button>
+      </div>
+      <div id="compare"></div>
+    </section>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
