@@ -1,0 +1,29 @@
+plugins {
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+tasks.register('engineTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the built-in deterministic engine and HTTP API tests.'
+    classpath = sourceSets.main.get().output
+    mainClass = 'replayroom.tests.TestRunner'
+}
+
+tasks.named('test') {
+    enabled = false
+    finalizedBy(tasks.named('engineTests'))
+}
+
+tasks.named('check') {
+    dependsOn(tasks.named('engineTests'))
+}
