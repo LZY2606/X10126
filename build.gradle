@@ -1,0 +1,25 @@
+plugins {
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+tasks.named('test') {
+    dependsOn 'classes', tasks.named('testClasses')
+    def testClassesDirs = sourceSets.test.output.classesDirs
+    def runtimeClasspath = sourceSets.test.runtimeClasspath
+    doLast {
+        javaexec {
+            classpath = files(testClassesDirs, sourceSets.main.output.classesDirs, runtimeClasspath)
+            mainClass = 'replay.TestRunner'
+        }
+    }
+}
