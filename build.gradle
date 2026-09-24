@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+tasks.register('replayTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the dependency-free deterministic replay tests.'
+    mainClass = 'replayroom.ReplayTests'
+    classpath = sourceSets.main.output
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('replayTests')
+    doFirst {
+        throw new org.gradle.api.tasks.StopExecutionException('Using replayTests instead of an external test framework.')
+    }
+}
