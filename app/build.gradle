@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+tasks.named('run') {
+    standardInput = System.in
+}
+
+tasks.register('engineTests', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    mainClass = 'replay.PlaybackTests'
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('engineTests')
+}

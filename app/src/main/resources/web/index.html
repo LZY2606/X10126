@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>状态机回放室</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>状态机回放室</h1>
+      <p>锁定定义版本、初始状态、事件内容与随机种子，逐步复现确定性状态跳转。</p>
+    </div>
+    <div class="badges">
+      <span id="definitionFingerprint">定义：未创建</span>
+      <span id="trajectoryHash">轨迹：-</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel setup">
+      <h2>1. 状态机与会话</h2>
+      <label>会话名称 <input id="sessionName" value="演示会话"></label>
+      <label>随机种子 <input id="seed" type="number" value="42"></label>
+      <label>状态机定义（JSON）<textarea id="definition" rows="18" spellcheck="false"></textarea></label>
+      <div class="toolbar">
+        <button id="validateDefinition">校验定义</button>
+        <button id="createSession" class="primary">创建锁定会话</button>
+        <button id="exportSession">导出会话</button>
+        <label class="fileButton">导入会话<input id="importSessionFile" type="file" accept="application/json"></label>
+      </div>
+      <label>已有会话
+        <select id="sessionSelect"></select>
+      </label>
+    </section>
+
+    <section class="panel runtime">
+      <h2>2. 事件与单步回放</h2>
+      <div class="toolbar wrap">
+        <label>当前分支 <select id="branchSelect"></select></label>
+        <button id="stepButton" class="primary">单步播放</button>
+        <button id="checkpointButton">建立检查点</button>
+        <button id="refreshButton">刷新</button>
+      </div>
+      <label>导入事件（JSON 数组）<textarea id="events" rows="9" spellcheck="false"></textarea></label>
+      <div class="toolbar">
+        <button id="importEvents">导入到当前分支</button>
+        <button id="loadSampleEvents">载入示例事件</button>
+      </div>
+      <div class="gridTwo">
+        <div>
+          <h3>等待队列</h3>
+          <div id="queue" class="scrollbox"></div>
+        </div>
+        <div>
+          <h3>当前快照</h3>
+          <pre id="snapshot" class="scrollbox"></pre>
+        </div>
+      </div>
+      <h3>逐步前后差异与轨迹</h3>
+      <div id="steps" class="steps"></div>
+    </section>
+
+    <section class="panel branches">
+      <h2>3. 检查点、分叉、比较与合并</h2>
+      <div class="gridThree">
+        <div>
+          <h3>检查点</h3>
+          <div id="checkpoints" class="scrollbox tall"></div>
+          <div class="toolbar wrap">
+            <button id="forkButton">从选中检查点分叉</button>
+            <button id="restoreButton">恢复检查点</button>
+          </div>
+        </div>
+        <div>
+          <h3>分支比较</h3>
+          <label>左分支 <select id="compareLeft"></select></label>
+          <label>右分支 <select id="compareRight"></select></label>
+          <button id="compareButton">比较状态与输出</button>
+          <pre id="comparison" class="scrollbox tall"></pre>
+        </div>
+        <div>
+          <h3>尝试合并</h3>
+          <label>合并名称 <input id="mergeName" value="合并实验"></label>
+          <label class="check"><input id="mergeCreate" type="checkbox" checked> 兼容时创建合并分支</label>
+          <button id="mergeButton">尝试三路合并</button>
+          <pre id="mergeResult" class="scrollbox tall"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="exportDialog">
+    <h3>导出的会话</h3>
+    <textarea id="exportText" rows="18" spellcheck="false"></textarea>
+    <div class="toolbar end">
+      <button id="copyExport">复制</button>
+      <button id="closeExport">关闭</button>
+    </div>
+  </dialog>
+
+  <div id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
