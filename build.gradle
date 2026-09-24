@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('replayTests', JavaExec) {
+    dependsOn tasks.named('compileTestJava')
+    classpath = sourceSets.test.get().output
+    mainClass = 'replay.ReplayTests'
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn 'replayTests'
+}
