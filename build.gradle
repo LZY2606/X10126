@@ -1,0 +1,29 @@
+plugins {
+    id 'application'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+// 自带的小型确定性测试（不依赖 JUnit，避免构建时联网拉依赖）
+def engineTest = tasks.register('engineTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic replay-room engine tests.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.EngineTests'
+}
+
+tasks.named('test') {
+    dependsOn engineTest
+    enabled = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
