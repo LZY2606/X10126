@@ -1,0 +1,29 @@
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'application'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    application {
+        mainClass = 'replay.Main'
+    }
+
+    def replayTest = tasks.register('replayTest', JavaExec) {
+        group = 'verification'
+        description = 'Runs the built-in deterministic test suite (no external test framework).'
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'replay.AllTests'
+    }
+
+    tasks.named('test') {
+        dependsOn replayTest
+        enabled = false
+    }
+}
