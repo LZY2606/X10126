@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.replayroom'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+run {
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
+tasks.register('unitTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs deterministic unit tests (virtual logical clock, no sleeps)'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.TestRunner'
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
+tasks.named('test') {
+    enabled = false
+    dependsOn tasks.named('unitTests')
+}
