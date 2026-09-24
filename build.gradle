@@ -1,0 +1,30 @@
+plugins {
+    id 'application'
+}
+
+group = 'replayroom'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+// 不依赖任何外部组件：用自研的轻量断言测试运行器（虚拟逻辑时钟，无 sleep）。
+tasks.register('replayTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic state-machine replay test suite.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replayroom.ReplayTests'
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('replayTests')
+    enabled = false
+}
