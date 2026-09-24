@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'replay'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+// 运行时不依赖任何外部组件：测试使用 JDK 自带功能手写的微型测试框架。
+// test 任务本身编译测试目录（testClasses 依赖 classes），实际断言在 replayTests 中执行。
+tasks.register('replayTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the built-in deterministic replay test suite.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.TestRunner'
+}
+
+tasks.named('test') {
+    dependsOn 'replayTests'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
