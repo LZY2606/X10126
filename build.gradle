@@ -1,0 +1,33 @@
+plugins {
+    id 'application'
+}
+
+group = 'replayroom'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('runTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the built-in deterministic test suite (virtual clock, no sleeps).'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replayroom.Tests'
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
+tasks.named('test') {
+    dependsOn 'runTests'
+}
