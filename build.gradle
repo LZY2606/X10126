@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+
+application {
+    mainClass = 'replay.Server'
+}
+
+// 纯 JDK 实现的测试运行器（不依赖外部测试框架，构建无需联网）
+tasks.register('replayTests', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic replay engine tests.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replay.ReplayTests'
+}
+
+test {
+    dependsOn tasks.named('replayTests')
+}
