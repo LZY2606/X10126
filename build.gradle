@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'replay'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replay.Main'
+}
+
+sourceSets {
+    coretest {
+        java.srcDir file('src/test/java')
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+tasks.register('coreTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the self-contained deterministic test suite (no sleep, no external services).'
+    classpath = sourceSets.coretest.runtimeClasspath
+    mainClass = 'replay.TestRunner'
+}
+
+tasks.named('test') {
+    dependsOn 'coreTest'
+    enabled = false
+}
+
+tasks.named('run') {
+    standardInput = System.in
+}
