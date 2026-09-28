@@ -1,0 +1,28 @@
+plugins {
+    id 'application'
+}
+
+group = 'room'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'room.ReplayRoomMain'
+}
+
+// 不引入任何外部测试框架：内置 Test 任务无测试用例时始终离线通过，
+// 真正的确定性断言测试由 engineTests（JavaExec）承担。
+tasks.named('test') {
+    finalizedBy 'engineTests'
+}
+
+tasks.register('engineTests', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = 'room.tests.TestRunner'
+}
