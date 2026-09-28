@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'replayroom'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'replayroom.Main'
+}
+
+// 本项目零外部依赖：测试使用自研的轻量 runner（replayroom.TestRunner），
+// 关闭标准 test 任务，用同名 JavaExec 任务替代，保证 ./gradlew test 离线可跑。
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.register('test', JavaExec) {
+    group = 'verification'
+    description = 'Runs the deterministic replay-room test suite (no external deps).'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'replayroom.TestRunner'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('test')
+}
